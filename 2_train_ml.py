@@ -8,18 +8,12 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 
 
 def train_models():
-    # ==========================================
-    # 1. LOAD CLEAN DATA
-    # ==========================================
     print("Loading clean data...")
     df_train = pd.read_csv("clean_train.csv")
     df_test = pd.read_csv("clean_test.csv")
 
-    # Prepare features (X) and target (y)
-    # We drop 'label' (the answer) and 'attack_type' (text name) if it exists
     cols_to_drop = ['label', 'attack_type']
 
-    # intricate check to only drop columns that actually exist to prevent errors
     train_drop = [c for c in cols_to_drop if c in df_train.columns]
     test_drop = [c for c in cols_to_drop if c in df_test.columns]
 
@@ -31,9 +25,7 @@ def train_models():
 
     print(f"Data Loaded. Training with {X_train.shape[1]} features.")
 
-    # ==========================================
-    # 2. TRAIN DECISION TREE (Model A)
-    # ==========================================
+
     print("\n--- Training Decision Tree ---")
     dt_model = DecisionTreeClassifier(random_state=42)
     dt_model.fit(X_train, y_train)
@@ -45,9 +37,7 @@ def train_models():
     print("Decision Tree Report:")
     print(classification_report(y_test, dt_pred))
 
-    # ==========================================
-    # 3. TRAIN RANDOM FOREST (Model B)
-    # ==========================================
+
     print("\n--- Training Random Forest ---")
     rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
     rf_model.fit(X_train, y_train)
@@ -59,10 +49,7 @@ def train_models():
     print("Random Forest Report:")
     print(classification_report(y_test, rf_pred))
 
-    # ==========================================
-    # 4. SAVE RESULTS & MODEL
-    # ==========================================
-    # Compare and tell user which was better
+
     if rf_acc > dt_acc:
         print(f"\nResult: Random Forest is better by {(rf_acc - dt_acc) * 100:.2f}%")
         joblib.dump(rf_model, "ids_model.joblib")
@@ -72,7 +59,6 @@ def train_models():
 
     print("[Success] Best model saved as 'ids_model.joblib'")
 
-    # Optional: Create Confusion Matrix Chart for your Report
     plt.figure(figsize=(6, 5))
     cm = confusion_matrix(y_test, rf_pred)
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Normal', 'Attack'],
