@@ -1,57 +1,84 @@
 import socket
 import joblib
-import numpy as np
 import json
+import numpy as np
+import sys
+import os
+from colorama import init, Fore, Style
+from datetime import datetime
 
-print("Loading IDS Model...")
-model = joblib.load('ids_model.joblib')
-print("Model loaded.")
+# 1. SETUP VISUALS
+init(autoreset=True)  # Makes colors work on Windows
 
-HOST = '127.0.0.1'  # Localhost
-PORT = 9999  # Port to listen on
+# 2. CONFIGURATION
+HOST = '127.0.0.1'
+PORT = 9999
+MODEL_FILE = 'ids_model.joblib'
 
+# 3. LOAD BRAIN
+print(f"{Fore.CYAN}[INIT] Loading AI Model from {MODEL_FILE}...")
+if not os.path.exists(MODEL_FILE):
+    print(f"{Fore.RED}[ERROR] Model file not found! Run '2_train_ml_models.py' first.")
+    sys.exit(1)
 
-def start_server():
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind((HOST, PORT))
-    server_socket.listen(1)
+model = joblib.load(MODEL_FILE)
+print(f"{Fore.GREEN}[SUCCESS] AI Model Loaded. System Ready.")
 
-    print(f"IDS Server listening on {HOST}:{PORT}...")
-    print("Waiting for network traffic...")
+# 4. START SERVER
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+# This line fixes the "Port Busy" error by forcing the OS to release the port
+server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-    while True:
-        try:
-            client_conn, client_addr = server_socket.accept()
+try:
+    server.bind((HOST, PORT))
+    server.listen(5)
+    print(f"{Fore.CYAN}[NET] Visual Defense Center listening on {HOST}:{PORT}")
+    print("-" * 60)
+except OSError:
+    print(f"{Fore.RED}[ERROR] Port {PORT} is busy! Please close other terminal windows and try again.")
+    sys.exit(1)
 
-            data = client_conn.recv(4096).decode('utf-8')
+# 5. MAIN LOOP
+while True:
+    try:
+        client_socket, addr = server.accept()
+        print(f"{Fore.YELLOW}[CONN] New Connection from {addr}")
 
+        while True:
+            # Receive data (up to 4KB)
+            data = client_socket.recv(4096)
             if not data:
-                break
+                break  # Client disconnected
 
             try:
-                features_list = [float(x) for x in data.split(',')]
+                # Decode data
+                json_data = data.decode('utf-8')
+                features_list = json.loads(json_data)
+
+                # Convert to numpy array for the AI
                 features = np.array(features_list).reshape(1, -1)
 
+                # AI PREDICTION
                 prediction = model.predict(features)[0]
-                result = "ATTACK DETECTED!" if prediction == 1 else "Normal Traffic"
+                timestamp = datetime.now().strftime("%H:%M:%S")
 
-                response = f"Analysis: {result}"
-                client_conn.send(response.encode('utf-8'))
+                if prediction == 1:  # ATTACK
+                    print(f"{Style.BRIGHT}{Fore.RED}[{timestamp}] 🚨 ALERT: MALICIOUS TRAFFIC DETECTED!")
+                    response = "ALERT_BLOCK"
+                else:  # NORMAL
+                    print(f"{Fore.GREEN}[{timestamp}] ✅ Normal Traffic")
+                    response = "SAFE_PASS"
 
-                print(f"Received traffic from {client_addr} -> Verdict: {result}")
+                # Send reply to client
+                client_socket.send(response.encode('utf-8'))
 
-            except ValueError:
-                print("Error: Received malformed data")
-                client_conn.send(b"Error: Invalid data format")
+            except Exception as e:
+                print(f"{Fore.RED}[ERR] Bad Data Packet: {e}")
+                break
 
-            client_conn.close()
+        client_socket.close()
+        print(f"{Fore.YELLOW}[CONN] Connection Closed.")
 
-        except KeyboardInterrupt:
-            print("\nStopping server...")
-            break
-        except Exception as e:
-            print(f"Error: {e}")
-
-
-if __name__ == "__main__":
-    start_server()
+    except KeyboardInterrupt:
+        print(f"\n{Fore.CYAN}[STOP] Server shutting down...")
+        break

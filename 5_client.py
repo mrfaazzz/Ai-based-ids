@@ -1,52 +1,58 @@
 import socket
 import pandas as pd
+import json
 import time
 import random
+import sys
+from colorama import init, Fore
 
-SERVER_IP = '127.0.0.1'
-SERVER_PORT = 9999
+init(autoreset=True)
+
+# 1. CONFIGURATION
+HOST = '127.0.0.1'
+PORT = 9999
 DATA_FILE = 'clean_test.csv'
 
+print(f"{Fore.CYAN}[INIT] Loading Test Data from {DATA_FILE}...")
+try:
+    df = pd.read_csv(DATA_FILE)
 
-def simulate_traffic():
-    print(f"Loading traffic data from {DATA_FILE}...")
-    df = pd.read_csv()
+    if 'label' in df.columns:
+        df = df.drop('label', axis=1)
+    print(f"{Fore.GREEN}[SUCCESS] Loaded {len(df)} traffic samples.")
+except FileNotFoundError:
+    print(f"{Fore.RED}[ERROR] {DATA_FILE} not found! Run '1_analysis.py' first.")
+    sys.exit(1)
 
+client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    labels = df['label']
-    features = df.drop('label', axis=1)
+try:
+    print(f"{Fore.CYAN}[NET] Connecting to Visual Defense Center at {HOST}:{PORT}...")
+    client.connect((HOST, PORT))
+    print(f"{Fore.GREEN}[SUCCESS] Connected!")
+except ConnectionRefusedError:
+    print(f"{Fore.RED}[ERROR] Server is offline. Run '4_server.py' first!")
+    sys.exit(1)
 
-    print("Starting traffic simulation... (Press Ctrl+C to stop)")
+try:
+    while True:
+        random_index = random.randint(0, len(df) - 1)
+        packet_data = df.iloc[random_index].values.tolist()
 
-    # Iterate through the rows
-    for i in range(len(features)):
-        try:
-            # Get a single row of data
-            row_data = features.iloc[i].values
-            true_label = "Attack" if labels.iloc[i] == 1 else "Normal"
+        json_data = json.dumps(packet_data)
+        client.send(json_data.encode('utf-8'))
 
-            # Convert row to comma-separated string
-            message = ",".join(map(str, row_data))
+        print(f"{Fore.YELLOW}[OUT] Sending Packet #{random_index}...", end=" ")
 
-            client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client_socket.connect((SERVER_IP, SERVER_PORT))
+        response = client.recv(1024).decode('utf-8')
 
-            client_socket.send(message.encode('utf-8'))
+        if "ALERT" in response:
+            print(f"{Fore.RED}SERVER BLOCKED ATTACK!")
+        else:
+            print(f"{Fore.GREEN}SERVER ALLOWED TRAFFIC.")
 
-            response = client_socket.recv(1024).decode('utf-8')
-            print(f"Packet #{i + 1} [Actual: {true_label}] -> Server says: {response}")
+        time.sleep(2)
 
-            client_socket.close()
-
-            time.sleep(random.uniform(0.1, 0.5))
-
-        except KeyboardInterrupt:
-            print("\nSimulation stopped.")
-            break
-        except ConnectionRefusedError:
-            print("Error: Could not connect to server. Is 4_server.py running?")
-            break
-
-
-if __name__ == "__main__":
-    simulate_traffic()
+except KeyboardInterrupt:
+    print("\n[STOP] Client stopping...")
+    client.close()
