@@ -52,10 +52,10 @@ while True:
                 timestamp = datetime.now().strftime("%H:%M:%S")
 
                 if prediction == 1:
-                    print(f"{Style.BRIGHT}{Fore.RED}[{timestamp}] 🚨 ALERT: MALICIOUS TRAFFIC DETECTED!")
+                    print(f"{Style.BRIGHT}{Fore.RED}[{timestamp}]  ALERT: MALICIOUS TRAFFIC DETECTED!")
                     response = "ALERT_BLOCK"
                 else:
-                    print(f"{Fore.GREEN}[{timestamp}] ✅ Normal Traffic")
+                    print(f"{Fore.GREEN}[{timestamp}]  Normal Traffic")
                     response = "SAFE_PASS"
 
                 client_socket.send(response.encode('utf-8'))
