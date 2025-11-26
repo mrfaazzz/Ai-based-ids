@@ -81,7 +81,7 @@ try:
             time.sleep(random.uniform(0.2, 1.0))
 
 except KeyboardInterrupt:
-    print(f"\n{Fore.CYAN}[STOP] Simulation stopped by user.")
+    print(f"\n[STOP] Simulation stopped by user.")
     client_socket.close()
 except Exception as e:
     print(f"{Fore.RED}[ERROR] {e}")
