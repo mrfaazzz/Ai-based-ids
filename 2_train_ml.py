@@ -1,74 +1,75 @@
+
 import pandas as pd
 import joblib
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, classification_report
 
 
-def train_models():
+def train_and_evaluate():
     print("Loading clean data...")
-    df_train = pd.read_csv("clean_train.csv")
-    df_test = pd.read_csv("clean_test.csv")
+    try:
+        train_df = pd.read_csv('clean_train.csv')
+        test_df = pd.read_csv('clean_test.csv')
+    except FileNotFoundError:
+        print("Error: clean_train.csv not found. Run 1_processing.py first!")
+        return
 
-    cols_to_drop = ['label', 'attack_type']
+    X_train = train_df.drop('label', axis=1)
+    y_train = train_df['label']
+    X_test = test_df.drop('label', axis=1)
+    y_test = test_df['label']
 
-    train_drop = [c for c in cols_to_drop if c in df_train.columns]
-    test_drop = [c for c in cols_to_drop if c in df_test.columns]
+    models = {
+        "Decision Tree": DecisionTreeClassifier(random_state=42),
+        "Random Forest": RandomForestClassifier(n_estimators=100, random_state=42)
+    }
 
-    X_train = df_train.drop(train_drop, axis=1)
-    y_train = df_train['label']
+    results = {}
 
-    X_test = df_test.drop(test_drop, axis=1)
-    y_test = df_test['label']
+    print("\n--- Training & Evaluation ---")
+    best_model = None
+    best_f1 = 0
 
-    print(f"Data Loaded. Training with {X_train.shape[1]} features.")
+    for name, model in models.items():
+        print(f"\nTraining {name}...")
+        model.fit(X_train, y_train)
+        preds = model.predict(X_test)
 
+        acc = accuracy_score(y_test, preds)
+        prec = precision_score(y_test, preds)
+        rec = recall_score(y_test, preds)
+        f1 = f1_score(y_test, preds)
 
-    print("\n--- Training Decision Tree ---")
-    dt_model = DecisionTreeClassifier(random_state=42)
-    dt_model.fit(X_train, y_train)
+        results[name] = f1  # Store F1 for comparison graph
 
-    dt_pred = dt_model.predict(X_test)
-    dt_acc = accuracy_score(y_test, dt_pred)
+        print(f"Results for {name}:")
+        print(f"  Accuracy:  {acc:.4f}")
+        print(f"  Precision: {prec:.4f}")
+        print(f"  Recall:    {rec:.4f}")
+        print(f"  F1 Score:  {f1:.4f}")
+        print("-" * 30)
 
-    print(f"Decision Tree Accuracy: {dt_acc:.4f}")
-    print("Decision Tree Report:")
-    print(classification_report(y_test, dt_pred))
+        if f1 > best_f1:
+            best_f1 = f1
+            best_model = model
 
+    joblib.dump(best_model, 'ids_model.joblib')
+    print(f"\n[Saved] Best model based on F1-Score is saved to 'ids_model.joblib'")
 
-    print("\n--- Training Random Forest ---")
-    rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
-    rf_model.fit(X_train, y_train)
-
-    rf_pred = rf_model.predict(X_test)
-    rf_acc = accuracy_score(y_test, rf_pred)
-
-    print(f"Random Forest Accuracy: {rf_acc:.4f}")
-    print("Random Forest Report:")
-    print(classification_report(y_test, rf_pred))
-
-
-    if rf_acc > dt_acc:
-        print(f"\nResult: Random Forest is better by {(rf_acc - dt_acc) * 100:.2f}%")
-        joblib.dump(rf_model, "ids_model.joblib")
-    else:
-        print(f"\nResult: Decision Tree is better by {(dt_acc - rf_acc) * 100:.2f}%")
-        joblib.dump(dt_model, "ids_model.joblib")
-
-    print("[Success] Best model saved as 'ids_model.joblib'")
-
-    plt.figure(figsize=(6, 5))
-    cm = confusion_matrix(y_test, rf_pred)
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Normal', 'Attack'],
-                yticklabels=['Normal', 'Attack'])
-    plt.title('Confusion Matrix (Random Forest)')
-    plt.ylabel('Actual')
-    plt.xlabel('Predicted')
-    plt.savefig("chart_confusion_matrix.png")
-    print("[Saved] chart_confusion_matrix.png")
+    print("\nGenerating Model Comparison Graph...")
+    plt.figure(figsize=(7, 5))
+    sns.barplot(x=list(results.keys()), y=list(results.values()), palette="magma")
+    plt.ylabel('F1 Score')
+    plt.title('Model Performance Comparison (F1 Score)')
+    plt.ylim(0, 1.0)
+    plt.savefig('model_comparison.png')
+    print("Saved 'model_comparison.png'")
 
 
 if __name__ == "__main__":
-    train_models()
+    train_and_evaluate()
+
+
