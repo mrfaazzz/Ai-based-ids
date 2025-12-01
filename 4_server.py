@@ -38,7 +38,7 @@ def start_server():
     while True:
         try:
             client_conn, client_addr = server_socket.accept()
-            print(f"{Fore.YELLOW}[CONNECTION]{Style.RESET_ALL} Connected to  {client_addr}")
+            print(f"{Fore.YELLOW}[CONNECTION]{Style.RESET_ALL} Connected to {client_addr}")
 
             while True:
                 data = client_conn.recv(4096).decode('utf-8')
