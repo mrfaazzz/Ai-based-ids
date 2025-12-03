@@ -124,8 +124,6 @@ try:
 except FileNotFoundError:
     print(f"{Fore.RED}[ERROR] {DATA_FILE} not found! Run '1_processing.py' first.")
     sys.exit(1)
-
-# Connect
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 try:
     print(f"{Fore.YELLOW}[CONNECT] Attempting to connect to {HOST}:{PORT}...")
@@ -135,7 +133,6 @@ except ConnectionRefusedError:
     print(f"{Fore.RED}[ERROR] Server is offline. Run '4_server.py' first!")
     sys.exit(1)
 
-# --- NEW: ASK USER FOR PACKET COUNT ---
 print("-" * 60)
 try:
     user_input = input(f"{Fore.CYAN}How many packets to send? (Enter number or 'full' for infinite): {Fore.RESET}")
@@ -176,7 +173,7 @@ try:
                 packets_sent += 1  # Only count successful ones towards the limit in demo mode
                 time.sleep(random.uniform(0.5, 1.5))
             else:
-                pass # Don't count failed ones, retry immediately
+                pass
         else:
             print(f"Packet #{idx} [{color}{actual_type}{Fore.RESET}] -> Server Response: {color}{Style.BRIGHT}{response}")
             packets_sent += 1
