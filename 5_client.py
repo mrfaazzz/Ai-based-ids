@@ -135,9 +135,9 @@ except ConnectionRefusedError:
 
 print("-" * 60)
 try:
-    user_input = input(f"{Fore.CYAN}How many packets to send? (Enter number or 'full' for infinite): {Fore.RESET}")
-    if user_input.lower() == 'full':
-        MAX_PACKETS = float('inf')
+    user_input = input(f"{Fore.CYAN}How many packets to send? (Enter number or 'I' for infinite): {Fore.RESET}")
+    if user_input.lower() == 'I':
+        MAX_PACKETS = float('I')
     else:
         MAX_PACKETS = int(user_input)
 except ValueError:
